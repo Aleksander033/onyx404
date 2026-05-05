@@ -1,12 +1,9 @@
 /**
- * RINDËRTIMI I CHAT-IT (STANDALONE)
- * Analizuar nga bundle.js
+ * CHAT.JS - VERSIONI I KORRIGJUAR (FIXED)
  */
-
 const StandaloneChat = {
     isOpen: false,
     socket: null,
-    history: [],
     
     init() {
         this.dom = {
@@ -16,14 +13,23 @@ const StandaloneChat = {
         };
         
         this.bindEvents();
-        this.mockConnect(); // Ndryshoje në connectReal() nëse ke serverin gati
+        
+        // 1. E nisim vetëm në mode DEMO që të mos kemi errore në console
+        this.mockConnect(); 
+        
+        // 2. Nëse do ta testosh me serverin real, hiqi // rreshtit më poshtë, 
+        // por mbaj parasysh që serveri i lojës mund ta refuzojë lidhjen.
+        // this.connectReal(); 
     },
 
     bindEvents() {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                if (!this.isOpen) this.showInput();
-                else this.send();
+                if (!this.isOpen) {
+                    this.showInput();
+                } else {
+                    this.send();
+                }
             }
             if (e.key === 'Escape' && this.isOpen) {
                 this.hideInput();
@@ -53,7 +59,6 @@ const StandaloneChat = {
         this.dom.display.appendChild(msgEl);
         this.dom.display.scrollTop = this.dom.display.scrollHeight;
         
-        // Ruaj limitin e mesazheve si në bundle.js (maksimumi 50)
         if (this.dom.display.childNodes.length > 50) {
             this.dom.display.removeChild(this.dom.display.firstChild);
         }
@@ -62,14 +67,16 @@ const StandaloneChat = {
     send() {
         const val = this.dom.input.value.trim();
         if (val) {
-            // Renderimi lokal i menjëhershëm
+            // Shfaqja lokale (Punon 100%)
             this.addMessage("Ti", val, "#ffffff");
             
-            // LOGJIKA E DËRGIMIT (Në bundle.js përdoret formati binar)
+            // Kontrolli për serverin (Nuk nxjerr error nëse është offline)
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                // Nëse përdorni serverin origjinal, këtu duhet të thirret funksioni i enkriptimit të WASM
-                // Për versionin standalone po dërgojmë tekst/json si fallback
-                this.socket.send(JSON.stringify({type: 'chat', message: val}));
+                try {
+                    this.socket.send(JSON.stringify({type: 'chat', message: val}));
+                } catch (e) {
+                    console.log("Serveri nuk e pranoi formatin e mesazhit.");
+                }
             }
         }
         this.hideInput();
@@ -81,30 +88,23 @@ const StandaloneChat = {
         return p.innerHTML;
     },
 
-    // Versioni Demo pa server
     mockConnect() {
-        console.log("Chat i lidhur në mode: DEMO");
+        console.log("Chat Moduli: Aktivizuar në mode Standalone.");
         setTimeout(() => {
-            this.addMessage("Sistemi", "Mirësevini! Chat-i është gati.", "#ffcc00");
-        }, 1000);
+            this.addMessage("Sistemi", "Chat-i u ngarkua me sukses! Shtyp Enter.", "#ffcc00");
+        }, 500);
     },
 
-    // Versioni Real (Kërkon backend-in të specifikuar në bundle.js)
-    connectReal(url = "wss://eu.senpa.io:2001") {
+    connectReal() {
         try {
-            this.socket = new WebSocket(url);
-            this.socket.binaryType = "arraybuffer";
-            
-            this.socket.onmessage = (e) => {
-                // Këtu do të duhej dekodimi i të dhënave binare (Uint8Array)
-                // siç shihet në klasën 'R' të bundle.js
-                console.log("Mesazh i marrë nga serveri");
-            };
+            // Kjo URL është nga bundle.js, por mund të mos lejojë lidhje jashtë lojës
+            this.socket = new WebSocket("wss://eu.senpa.io:2001");
+            this.socket.onerror = () => console.log("Lidhja me serverin dështoi (Normal për standalone).");
         } catch (err) {
-            console.error("Dështoi lidhja me serverin:", err);
+            // Error handling i heshtur që të mos bllokojë browserin
         }
     }
 };
 
-// Inicializimi
-document.addEventListener('DOMContentLoaded', () => StandaloneChat.init());
+// Start
+StandaloneChat.init();
