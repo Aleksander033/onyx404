@@ -596,6 +596,7 @@
   </style>
   <script src="assets/js/lib.js?v=5.43"></script>
   <link href="assets/css/albion.css?v=5.43" rel="stylesheet">
+    <link href="assets/css/chat.css" rel="stylesheet">
   <style></style>
 </head>
 
@@ -2531,6 +2532,20 @@
     k.setStatus = (s) => console.log("[status]", s);
   </script>
 
+ 
+  
+  <div id="chat-container">
+    <div id="chat-messages">
+        </div>
+    <div id="chat-input-wrapper">
+        <input type="text" id="chat-input" placeholder="Shkruaj një mesazh..." maxlength="100">
+    </div>
+</div>
+
+  
+  
+  
+  
   <script type="text/javascript" src="./deo.onyx.beautified.js" charset="utf-8"></script>
 
   <script>
@@ -2545,8 +2560,10 @@
     }
   </script>
 
+<script src="chat.js"></script>
 
-<script>
+  
+  <script>
     
       window.addEventListener('mousedown', function(e) {
       if (e.target.id !== 'canvas') return;
