@@ -1,114 +1,110 @@
 /**
- * Logjika e Chat-it (Standalone Version)
- * E izoluar nga bundle.js
+ * RINDËRTIMI I CHAT-IT (STANDALONE)
+ * Analizuar nga bundle.js
  */
 
-const ChatModule = {
-    settings: {
-        chatNickColor: "#4fecff",
-        chatMessageColor: "#DDDDDD",
-        maxMessages: 50
-    },
-    
-    isTyping: false,
+const StandaloneChat = {
+    isOpen: false,
     socket: null,
-
+    history: [],
+    
     init() {
-        this.container = document.getElementById('chat-container');
-        this.messageBox = document.getElementById('chat-messages');
-        this.input = document.getElementById('chat-input');
-
-        this.setupListeners();
-        this.connectBackend(); // Lidhja me serverin (ose Mock)
+        this.dom = {
+            wrapper: document.getElementById('standalone-chat-wrapper'),
+            display: document.getElementById('chat-display'),
+            input: document.getElementById('chat-input')
+        };
+        
+        this.bindEvents();
+        this.mockConnect(); // Ndryshoje në connectReal() nëse ke serverin gati
     },
 
-    setupListeners() {
-        // Eventi Enter për të hapur/dërguar chat-in
+    bindEvents() {
         window.addEventListener('keydown', (e) => {
-            if (e.keyCode === 13) { // Enter
-                if (!this.isTyping) {
-                    this.openChat();
-                } else {
-                    this.sendChatMessage();
-                }
+            if (e.key === 'Enter') {
+                if (!this.isOpen) this.showInput();
+                else this.send();
             }
-            if (e.keyCode === 27 && this.isTyping) { // ESC
-                this.closeChat();
+            if (e.key === 'Escape' && this.isOpen) {
+                this.hideInput();
             }
         });
     },
 
-    openChat() {
-        this.isTyping = true;
-        this.input.style.display = 'block';
-        this.input.focus();
-        this.container.style.pointerEvents = 'auto';
+    showInput() {
+        this.isOpen = true;
+        this.dom.input.style.display = 'block';
+        this.dom.input.focus();
+        this.dom.wrapper.style.pointerEvents = 'auto';
     },
 
-    closeChat() {
-        this.isTyping = false;
-        this.input.value = '';
-        this.input.style.display = 'none';
-        this.input.blur();
-        this.container.style.pointerEvents = 'none';
+    hideInput() {
+        this.isOpen = false;
+        this.dom.input.value = '';
+        this.dom.input.style.display = 'none';
+        this.dom.wrapper.style.pointerEvents = 'none';
     },
 
-    sendChatMessage() {
-        const text = this.input.value.trim();
-        if (text !== "") {
-            // Logjika origjinale përdor mesazhe binare (Uint8Array)
-            // Këtu po përdorim një fallback funksional:
-            this.broadcastMessage("Ti", text);
+    addMessage(nick, text, color = "#4fecff") {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-line';
+        msgEl.innerHTML = `<span class="chat-nick" style="color: ${color}">${nick}:</span><span class="chat-msg">${this.escapeHTML(text)}</span>`;
+        
+        this.dom.display.appendChild(msgEl);
+        this.dom.display.scrollTop = this.dom.display.scrollHeight;
+        
+        // Ruaj limitin e mesazheve si në bundle.js (maksimumi 50)
+        if (this.dom.display.childNodes.length > 50) {
+            this.dom.display.removeChild(this.dom.display.firstChild);
+        }
+    },
+
+    send() {
+        const val = this.dom.input.value.trim();
+        if (val) {
+            // Renderimi lokal i menjëhershëm
+            this.addMessage("Ti", val, "#ffffff");
             
+            // LOGJIKA E DËRGIMIT (Në bundle.js përdoret formati binar)
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                this.socket.send(JSON.stringify({ type: 'chat', msg: text }));
+                // Nëse përdorni serverin origjinal, këtu duhet të thirret funksioni i enkriptimit të WASM
+                // Për versionin standalone po dërgojmë tekst/json si fallback
+                this.socket.send(JSON.stringify({type: 'chat', message: val}));
             }
         }
-        this.closeChat();
+        this.hideInput();
     },
 
-    broadcastMessage(nick, message) {
-        const line = document.createElement('div');
-        line.className = 'chat-line';
-        
-        line.innerHTML = `
-            <span class="chat-nick" style="color: ${this.settings.chatNickColor}">${nick}:</span>
-            <span class="chat-msg">${message}</span>
-        `;
-
-        this.messageBox.appendChild(line);
-
-        // Fshi mesazhet e vjetra nëse kalohet limiti
-        if (this.messageBox.children.length > this.settings.maxMessages) {
-            this.messageBox.removeChild(this.messageBox.firstChild);
-        }
-        
-        // Auto-scroll në fund
-        this.messageBox.scrollTop = this.messageBox.scrollHeight;
+    escapeHTML(str) {
+        const p = document.createElement('p');
+        p.textContent = str;
+        return p.innerHTML;
     },
 
-    /**
-     * Lidhja me Serverin
-     * Koduar sipas serverUrl: "wss://eu.senpa.io:2001" gjetur në bundle.js
-     */
-    connectBackend() {
-        // Fallback / Mock System
-        console.log("Chat: Duke u lidhur me serverin (Mode: Demo Fallback)...");
-        
-        // Simulim i marrjes së mesazheve (Mock)
+    // Versioni Demo pa server
+    mockConnect() {
+        console.log("Chat i lidhur në mode: DEMO");
         setTimeout(() => {
-            this.broadcastMessage("Server", "Mirësevini në Chat! Shtyp Enter për të shkruar.");
+            this.addMessage("Sistemi", "Mirësevini! Chat-i është gati.", "#ffcc00");
         }, 1000);
+    },
 
-        /* // Versioni për Backend Real:
-        this.socket = new WebSocket("wss://eu.senpa.io:2001");
-        this.socket.onmessage = (event) => {
-             // Këtu dekodohet buffer-i binar sipas klasës R (DataView) në bundle.js
-             this.broadcastMessage("Lojtari", event.data);
-        };
-        */
+    // Versioni Real (Kërkon backend-in të specifikuar në bundle.js)
+    connectReal(url = "wss://eu.senpa.io:2001") {
+        try {
+            this.socket = new WebSocket(url);
+            this.socket.binaryType = "arraybuffer";
+            
+            this.socket.onmessage = (e) => {
+                // Këtu do të duhej dekodimi i të dhënave binare (Uint8Array)
+                // siç shihet në klasën 'R' të bundle.js
+                console.log("Mesazh i marrë nga serveri");
+            };
+        } catch (err) {
+            console.error("Dështoi lidhja me serverin:", err);
+        }
     }
 };
 
-// Starto modulin
-ChatModule.init();
+// Inicializimi
+document.addEventListener('DOMContentLoaded', () => StandaloneChat.init());
