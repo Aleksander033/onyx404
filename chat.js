@@ -1,105 +1,104 @@
 (function() {
-    console.log("%c[Scanner] Duke kërkuar për Chat Engine...", "color: orange;");
+    console.log("%c[System] Duke nisur operacionin e lidhjes bllokuese...", "color: cyan;");
 
-    // 1. INJEKTIMI I CSS (Identik)
+    // 1. INJEKTIMI I CSS
     const style = document.createElement('style');
     style.textContent = `
-        #specialist-chat {
-            position: fixed; bottom: 20px; left: 20px; width: 320px;
-            z-index: 1000000; font-family: 'Ubuntu', sans-serif; pointer-events: none;
+        #chat-bridge-ui {
+            position: fixed; bottom: 15px; left: 15px; width: 300px;
+            z-index: 2147483647; font-family: 'Ubuntu', sans-serif; pointer-events: none;
         }
-        #chat-view {
-            height: 200px; overflow-y: auto; background: rgba(0, 0, 0, 0.6);
-            border-radius: 6px; padding: 10px; margin-bottom: 8px;
-            color: #fff; font-size: 14px; list-style: none; pointer-events: all;
+        #chat-box-main {
+            height: 180px; overflow-y: auto; background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #333; border-radius: 4px; padding: 8px; margin-bottom: 5px;
+            color: #fff; font-size: 13px; list-style: none; pointer-events: all;
         }
         #chat-input-final {
-            width: 100%; background: #000; border: 2px solid #4fecff;
-            color: #fff; padding: 10px; border-radius: 5px; outline: none;
+            width: 100%; background: #111; border: 1px solid #4fecff;
+            color: #fff; padding: 8px; border-radius: 4px; outline: none;
             pointer-events: all; box-sizing: border-box;
         }
-        .nick-name { color: #4fecff; font-weight: bold; margin-right: 5px; }
+        .nick-tag { color: #4fecff; font-weight: bold; margin-right: 4px; }
     `;
     document.head.appendChild(style);
 
-    // 2. DOM STRUCTURE
-    const ui = document.createElement('div');
-    ui.id = 'specialist-chat';
-    ui.innerHTML = `
-        <ul id="chat-view"><li>[Skanimi...] Po pret aktivizimin e lojës.</li></ul>
-        <input type="text" id="chat-input-final" placeholder="Duke lidhur..." disabled>
+    // 2. NDËRFAQJA
+    const div = document.createElement('div');
+    div.id = 'chat-bridge-ui';
+    div.innerHTML = `
+        <ul id="chat-box-main"><li>Skanimi i memories për lojën...</li></ul>
+        <input type="text" id="chat-input-final" placeholder="Duke pritur lidhjen..." disabled>
     `;
-    document.body.appendChild(ui);
+    document.body.appendChild(div);
 
-    const chatView = document.getElementById('chat-view');
-    const chatInput = document.getElementById('chat-input-final');
+    const log = document.getElementById('chat-box-main');
+    const input = document.getElementById('chat-input-final');
 
-    // 3. TEKNIKA E SPECIALISTIT: PROTOTYPE HOOKING
-    // Ne po ndryshojmë prototipin e klasës përpara se loja të fillojë
-    
-    function inject() {
-        // Kontrollojmë nëse klasa $e (ChatBox) është e disponueshme në scope-in e lojës
-        // Pasi Senpa.io përdor Webpack, ne kërkojmë objektin e instancuar
-        if (window.app && window.app.chatBox) {
-            
-            const realChat = window.app.chatBox;
+    // 3. TEKNIKA E SPECIALISTIT: HOOKING NE PROTOTIP
+    // Kjo kap klasën $e (ChatBox) pavarësisht ku është fshehur
+    let chatInstance = null;
 
-            // Krijojmë një urë dërgimi
-            window.chatApp = {
-                send: function(text) {
-                    if (text.trim() === "") return;
-                    realChat.send(text);
-                },
-                display: function(name, msg) {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span class="nick-name">${name}:</span><span>${msg}</span>`;
-                    chatView.appendChild(li);
-                    chatView.scrollTop = chatView.scrollHeight;
-                }
-            };
+    function hookChat() {
+        // Kontrollojmë të gjitha instancat e mundshme ku loja ruan ChatBox
+        const targets = [window.app, window.Gn, window.zn, window.E];
+        
+        for (let t of targets) {
+            if (t && t.chatBox) {
+                chatInstance = t.chatBox;
+                break;
+            }
+        }
 
-            // Kapim mesazhet HYRËSE (Hooking original function)
-            const oldAdd = realChat.addMessage;
-            realChat.addMessage = function(name, text) {
-                window.chatApp.display(name || "Player", text);
+        if (chatInstance) {
+            // Sukses! Krijojmë urën
+            input.disabled = false;
+            input.placeholder = "Shkruaj tani (Enter)...";
+            log.innerHTML = "<li><b style='color:lime'>✔ Lidhja u krye!</b> Komuniko me lojtarët.</li>";
+
+            // Kap mesazhet që vijnë
+            const oldAdd = chatInstance.addMessage;
+            chatInstance.addMessage = function(name, text) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="nick-tag">${name || 'Player'}:</span><span>${text}</span>`;
+                log.appendChild(li);
+                log.scrollTop = log.scrollHeight;
                 return oldAdd.apply(this, arguments);
             };
 
-            // Aktivizojmë Input-in
-            chatInput.disabled = false;
-            chatInput.placeholder = "Shkruaj tani...";
-            chatView.innerHTML = "<li>% Lidhja u krye me sukses 100%.</li>";
-
-            chatInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    window.chatApp.send(chatInput.value);
-                    chatInput.value = '';
+            // Dërgimi i mesazhit
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && input.value.trim() !== "") {
+                    chatInstance.send(input.value);
+                    input.value = '';
                 }
                 e.stopPropagation();
             });
 
-            console.log("%c[Success] Chat u injektua!", "color: green; font-weight: bold;");
             return true;
         }
         return false;
     }
 
-    // Skanim i vazhdueshëm agresiv çdo 200ms
-    const scanner = setInterval(() => {
-        if (inject()) {
-            clearInterval(scanner);
+    // Provon çdo 300ms derisa ta gjejë
+    const retry = setInterval(() => {
+        if (hookChat()) {
+            clearInterval(retry);
+            console.log("%c[Success] Chat u lidh me instancën aktive!", "color: lime;");
         }
-    }, 200);
+    }, 300);
 
-    // DETYRIMI: Nëse window.app nuk është i publikuar, ne e "detyrojmë"
-    // duke përgjuar krijimin e variablit Gn
-    Object.defineProperty(window, 'app', {
-        configurable: true,
-        enumerable: true,
-        get: function() { return this._app; },
-        set: function(val) { 
-            this._app = val;
-            console.log("[Detector] U kap instanca e lojës!");
+    // DETYRIMI: Kapja e Webpack (nëse app nuk është global)
+    // Ne përgjojmë krijimin e çdo objekti që ka chatBox brenda
+    const originalSet = Object.prototype.__defineSetter__;
+    window.addEventListener('load', () => {
+        if (!chatInstance) {
+             // Skanojmë objektet globale për pronësinë 'chatBox'
+             for (let key in window) {
+                 if (window[key] && window[key].chatBox) {
+                     window.app = window[key];
+                     hookChat();
+                 }
+             }
         }
     });
 
