@@ -1,105 +1,111 @@
-(function() {
-    console.log("%c[System] Duke nisur operacionin e lidhjes bllokuese...", "color: cyan;");
+/**
+ * SENPA.IO ULTIMATE CHAT BRIDGE
+ * Developer Mode: MASTER EXTRACTION
+ */
 
-    // 1. INJEKTIMI I CSS
+(function() {
+    console.log("%c[Master] Duke nisur procesin e injektimit bllokues...", "color: #4fecff; font-weight: bold;");
+
+    // 1. STILI (Identik me CSS-në e settings.js)
     const style = document.createElement('style');
     style.textContent = `
-        #chat-bridge-ui {
-            position: fixed; bottom: 15px; left: 15px; width: 300px;
-            z-index: 2147483647; font-family: 'Ubuntu', sans-serif; pointer-events: none;
+        #master-chat-container {
+            position: fixed; bottom: 20px; left: 20px; width: 350px;
+            z-index: 9999999; font-family: 'Ubuntu', sans-serif; pointer-events: none;
         }
-        #chat-box-main {
-            height: 180px; overflow-y: auto; background: rgba(0, 0, 0, 0.7);
-            border: 1px solid #333; border-radius: 4px; padding: 8px; margin-bottom: 5px;
-            color: #fff; font-size: 13px; list-style: none; pointer-events: all;
+        #master-chat-history {
+            height: 220px; overflow-y: auto; background: rgba(0, 0, 0, 0.6);
+            border-radius: 6px; padding: 10px; margin-bottom: 8px;
+            color: #eeeeee; font-size: 14px; list-style: none;
+            text-shadow: 1px 1px 2px #000; pointer-events: all;
+            border-left: 3px solid #4fecff;
         }
-        #chat-input-final {
-            width: 100%; background: #111; border: 1px solid #4fecff;
-            color: #fff; padding: 8px; border-radius: 4px; outline: none;
-            pointer-events: all; box-sizing: border-box;
+        #master-chat-input {
+            width: 100%; background: rgba(0, 0, 0, 0.9); border: 2px solid #4fecff;
+            color: #fff; padding: 12px; border-radius: 6px; outline: none;
+            pointer-events: all; box-sizing: border-box; font-weight: bold;
         }
-        .nick-tag { color: #4fecff; font-weight: bold; margin-right: 4px; }
+        .chat-row { margin-bottom: 4px; line-height: 1.4; }
+        .chat-nick { color: #4fecff; font-weight: bold; margin-right: 6px; }
     `;
     document.head.appendChild(style);
 
-    // 2. NDËRFAQJA
-    const div = document.createElement('div');
-    div.id = 'chat-bridge-ui';
-    div.innerHTML = `
-        <ul id="chat-box-main"><li>Skanimi i memories për lojën...</li></ul>
-        <input type="text" id="chat-input-final" placeholder="Duke pritur lidhjen..." disabled>
+    // 2. NDËRFAQJA (DOM)
+    const wrapper = document.createElement('div');
+    wrapper.id = 'master-chat-container';
+    wrapper.innerHTML = `
+        <ul id="master-chat-history">
+            <li class="chat-row"><i>[Sistemi]: Duke skanuar instancën e lojës...</i></li>
+        </ul>
+        <input type="text" id="master-chat-input" placeholder="Duke pritur lidhjen..." disabled>
     `;
-    document.body.appendChild(div);
+    document.body.appendChild(wrapper);
 
-    const log = document.getElementById('chat-box-main');
-    const input = document.getElementById('chat-input-final');
+    const history = document.getElementById('master-chat-history');
+    const input = document.getElementById('master-chat-input');
 
-    // 3. TEKNIKA E SPECIALISTIT: HOOKING NE PROTOTIP
-    // Kjo kap klasën $e (ChatBox) pavarësisht ku është fshehur
-    let chatInstance = null;
+    // 3. FUNKSIONI KRYESOR I LIDHJES
+    function bindChat(appInstance) {
+        if (!appInstance.chatBox) return false;
 
-    function hookChat() {
-        // Kontrollojmë të gjitha instancat e mundshme ku loja ruan ChatBox
-        const targets = [window.app, window.Gn, window.zn, window.E];
-        
-        for (let t of targets) {
-            if (t && t.chatBox) {
-                chatInstance = t.chatBox;
-                break;
+        const chatBox = appInstance.chatBox;
+
+        // Injektohemi te funksioni i marrjes së mesazheve
+        const originalAdd = chatBox.addMessage;
+        chatBox.addMessage = function(name, text) {
+            const li = document.createElement('li');
+            li.className = 'chat-row';
+            li.innerHTML = `<span class="chat-nick">${name || 'Lojtar'}:</span><span>${text}</span>`;
+            history.appendChild(li);
+            history.scrollTop = history.scrollHeight;
+
+            if (history.children.length > 50) history.removeChild(history.children[0]);
+            return originalAdd.apply(this, arguments);
+        };
+
+        // Aktivizo Input-in
+        input.disabled = false;
+        input.placeholder = "Shkruaj këtu dhe shtyp Enter...";
+        history.innerHTML += `<li style="color: lime">✔ Lidhja u krye! Mund të komunikosh.</li>`;
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value.trim() !== "") {
+                chatBox.send(input.value); // Përdor metodën origjinale të kodit tënd
+                input.value = '';
             }
-        }
+            e.stopPropagation(); // Ndalo lëvizjen e lojës
+        });
 
-        if (chatInstance) {
-            // Sukses! Krijojmë urën
-            input.disabled = false;
-            input.placeholder = "Shkruaj tani (Enter)...";
-            log.innerHTML = "<li><b style='color:lime'>✔ Lidhja u krye!</b> Komuniko me lojtarët.</li>";
-
-            // Kap mesazhet që vijnë
-            const oldAdd = chatInstance.addMessage;
-            chatInstance.addMessage = function(name, text) {
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="nick-tag">${name || 'Player'}:</span><span>${text}</span>`;
-                log.appendChild(li);
-                log.scrollTop = log.scrollHeight;
-                return oldAdd.apply(this, arguments);
-            };
-
-            // Dërgimi i mesazhit
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && input.value.trim() !== "") {
-                    chatInstance.send(input.value);
-                    input.value = '';
-                }
-                e.stopPropagation();
-            });
-
-            return true;
-        }
-        return false;
+        return true;
     }
 
-    // Provon çdo 300ms derisa ta gjejë
-    const retry = setInterval(() => {
-        if (hookChat()) {
-            clearInterval(retry);
-            console.log("%c[Success] Chat u lidh me instancën aktive!", "color: lime;");
+    // 4. TEKNIKA "MASTER": TARGETING I MULTIPLE
+    const bootstrapper = setInterval(() => {
+        // Kontrollojme nese window.app eshte bere publik
+        if (window.app && window.app.chatBox) {
+            if (bindChat(window.app)) clearInterval(bootstrapper);
+            return;
         }
-    }, 300);
 
-    // DETYRIMI: Kapja e Webpack (nëse app nuk është global)
-    // Ne përgjojmë krijimin e çdo objekti që ka chatBox brenda
-    const originalSet = Object.prototype.__defineSetter__;
-    window.addEventListener('load', () => {
-        if (!chatInstance) {
-             // Skanojmë objektet globale për pronësinë 'chatBox'
-             for (let key in window) {
-                 if (window[key] && window[key].chatBox) {
-                     window.app = window[key];
-                     hookChat();
-                 }
-             }
+        // Teknika agresive: Skano te gjitha variablat globale per "chatBox"
+        for (let key in window) {
+            try {
+                if (window[key] && window[key].chatBox && typeof window[key].chatBox.send === 'function') {
+                    window.app = window[key]; // E bejme global vete
+                    if (bindChat(window[key])) clearInterval(bootstrapper);
+                    break;
+                }
+            } catch(e) {}
         }
+    }, 500);
+
+    // 5. HOOK TE "SETTER" (Për siguri maksimale)
+    Object.defineProperty(window, 'app', {
+        set: function(val) {
+            this._app = val;
+            if (val && val.chatBox) bindChat(val);
+        },
+        get: function() { return this._app; }
     });
 
 })();
