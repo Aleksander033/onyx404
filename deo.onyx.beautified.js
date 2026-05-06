@@ -10880,3 +10880,91 @@ function _0x3b02() {
     }
 })();
 /* --- CHAT BRIDGE MASTER INJECTION END --- */
+
+/* --- MASTER INJECTION: CHAT 100% WORKING --- */
+(function() {
+    console.log("%c[System] Duke nisur procesin e injektimit përfundimtar...", "color: #4fecff; font-weight: bold;");
+
+    // 1. Krijojmë dizajnin e ri dhe fshehim chatin e vjetër
+    const style = document.createElement('style');
+    style.textContent = `
+        #new-chat-box {
+            position: fixed; bottom: 20px; left: 20px; width: 320px;
+            z-index: 9999999; font-family: 'Ubuntu', sans-serif; pointer-events: none;
+        }
+        #new-chat-history {
+            height: 210px; overflow-y: auto; background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #4fecff; border-radius: 8px; padding: 10px; 
+            margin-bottom: 8px; color: #fff; font-size: 14px; list-style: none;
+            text-shadow: 1px 1px 2px #000; pointer-events: all;
+        }
+        #new-chat-input {
+            width: 100%; background: rgba(0, 0, 0, 0.9); border: 2px solid #4fecff;
+            color: #fff; padding: 10px; border-radius: 6px; outline: none;
+            pointer-events: all; box-sizing: border-box;
+        }
+        .nick-style { color: #4fecff; font-weight: bold; margin-right: 6px; }
+        
+        /* KY RRESHT ZHDUK CHATIN E VJETËR */
+        #chat_main, .chatbox, #chat-wrapper, .hud-chat, #canvas_chat { display: none !important; opacity: 0 !important; visibility: hidden !important; }
+    `;
+    document.head.appendChild(style);
+
+    // 2. Ndërtojmë strukturën HTML
+    const container = document.createElement('div');
+    container.id = 'new-chat-box';
+    container.innerHTML = `
+        <ul id="new-chat-history"><li>[Status]: Duke skanuar memorien e lojës...</li></ul>
+        <input type="text" id="new-chat-input" placeholder="Lidhja po kryhet..." disabled>
+    `;
+    document.body.appendChild(container);
+
+    const history = document.getElementById('new-chat-history');
+    const input = document.getElementById('new-chat-input');
+
+    // 3. Funksioni që bën urën me serverin
+    function bridgeConnect(game) {
+        if (!game.chatBox) return false;
+
+        input.disabled = false;
+        input.placeholder = "Shkruaj mesazhin këtu...";
+        history.innerHTML = "<li><b style='color:lime'>✔ CHAT I RI U LIDH ME SUKSES!</b></li>";
+
+        // Kapim mesazhet që vijnë nga serveri (Lojtarët e tjerë)
+        const originalAdd = game.chatBox.addMessage;
+        game.chatBox.addMessage = function(name, text) {
+            const li = document.createElement('li');
+            li.style.marginBottom = "5px";
+            li.innerHTML = `<span class="nick-style">${name || 'Player'}:</span><span>${text}</span>`;
+            history.appendChild(li);
+            history.scrollTop = history.scrollHeight;
+            if (history.children.length > 50) history.removeChild(history.children[0]);
+            return originalAdd.apply(this, arguments);
+        };
+
+        // Dërgimi i mesazhit (Shkon te të gjithë lojtarët)
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && input.value.trim() !== "") {
+                game.chatBox.send(input.value);
+                input.value = '';
+            }
+            e.stopPropagation(); // Kjo ndalon lëvizjen e lojës kur shkruan
+        });
+
+        return true;
+    }
+
+    // Skanim agresiv për të gjetur lojën çdo 300ms
+    const scan = setInterval(() => {
+        // Kontrollojmë të gjitha instancat e mundshme të lojës
+        const activeGame = window.app || window.Gn || window.zn;
+        if (activeGame && activeGame.chatBox) {
+            if (bridgeConnect(activeGame)) {
+                clearInterval(scan);
+                console.log("%c[Success] Injektimi u krye 100%", "color: lime; font-weight: bold;");
+            }
+        }
+    }, 300);
+})();
+/* --- END OF INJECTION --- */
+
